@@ -34,7 +34,7 @@ model Application {
   id        String   @id @default(uuid())
   projectId String
   userId    String
-  status    String   @default("PENDING")
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   project   Project  @relation(fields: [projectId], references: [id])
