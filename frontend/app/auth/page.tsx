@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,21 +15,18 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const url = isLogin ? 'http://localhost:3000/auth/login' : 'http://localhost:3000/auth/register';
-    const body = isLogin ? { email, password } : { email, password, name };
-
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Something went wrong');
-      localStorage.setItem('access_token', data.access_token);
-      router.push('/projects');
+      if (isLogin) {
+        const res = await api.post('/auth/login', { email, password });
+        localStorage.setItem('access_token', res.data.access_token);
+        router.push('/projects');
+      } else {
+        const res = await api.post('/auth/register', { email, password, name });
+        localStorage.setItem('access_token', res.data.access_token);
+        router.push('/projects');
+      }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.message || 'Something went wrong');
     }
   };
 
