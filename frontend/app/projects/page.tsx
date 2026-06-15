@@ -14,14 +14,31 @@ interface Project {
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get('/projects')
-      .then(res => setProjects(res.data))
+      .then((res: { data: Project[] }) => {
+        setProjects(res.data);
+        setFilteredProjects(res.data);
+        const uniqueCategories = [...new Set(res.data.map(p => p.category))];
+        setCategories(uniqueCategories);
+      })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleFilter = (category: string) => {
+    setSelectedCategory(category);
+    if (category === '') {
+      setFilteredProjects(projects);
+    } else {
+      setFilteredProjects(projects.filter(p => p.category === category));
+    }
+  };
 
   if (loading) return <div>Loading...</div>;
 
@@ -36,8 +53,23 @@ export default function ProjectsPage() {
           My Applications
         </Link>
       </div>
+      
+      <div className="mb-4">
+        <label className="mr-2 font-semibold">Filter by category:</label>
+        <select
+          value={selectedCategory}
+          onChange={(e) => handleFilter(e.target.value)}
+          className="p-2 border rounded"
+        >
+          <option value="">All</option>
+          {categories.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid gap-4">
-        {projects.map(project => (
+        {filteredProjects.map(project => (
           <div key={project.id} className="border p-4 rounded">
             <h2 className="text-xl font-semibold">{project.title}</h2>
             <p>{project.description}</p>
@@ -46,6 +78,7 @@ export default function ProjectsPage() {
           </div>
         ))}
       </div>
+      {filteredProjects.length === 0 && <p>No projects in this category.</p>}
     </div>
   );
 }
