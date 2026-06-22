@@ -12,24 +12,42 @@ interface Project {
   ownerId: string;
 }
 
+interface ApiResponse {
+  data: Project[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    api.get('/projects')
-      .then((res: { data: Project[] }) => {
-        setProjects(res.data);
-        setFilteredProjects(res.data);
-        const uniqueCategories = [...new Set(res.data.map(p => p.category))];
+    api.get('/projects', { params: { page, limit: 10 } })
+      .then(res => {
+        const response = res.data as ApiResponse;
+        const projectsData: Project[] = response.data || [];
+        const meta = response.meta || { totalPages: 1 };
+        
+        setProjects(projectsData);
+        setFilteredProjects(projectsData);
+        setTotalPages(meta.totalPages || 1);
+        
+        const uniqueCategories: string[] = [...new Set(projectsData.map((p: Project) => p.category))];
         setCategories(uniqueCategories);
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
   const handleFilter = (category: string) => {
     setSelectedCategory(category);
@@ -37,6 +55,12 @@ export default function ProjectsPage() {
       setFilteredProjects(projects);
     } else {
       setFilteredProjects(projects.filter(p => p.category === category));
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
     }
   };
 
@@ -78,7 +102,30 @@ export default function ProjectsPage() {
           </div>
         ))}
       </div>
+
       {filteredProjects.length === 0 && <p>No projects in this category.</p>}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-4">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page === 1}
+            className="px-4 py-2 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-4 py-2">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page === totalPages}
+            className="px-4 py-2 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

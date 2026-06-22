@@ -1,4 +1,17 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateProjectDto } from './create-project.dto';
+import { IsString, IsOptional, MinLength } from 'class-validator';
 
-export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
+export class UpdateProjectDto {
+  @IsString()
+  @IsOptional()
+  @MinLength(3, { message: 'Title must be at least 3 characters' })
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(10, { message: 'Description must be at least 10 characters' })
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+}
