@@ -12,16 +12,6 @@ interface Project {
   ownerId: string;
 }
 
-interface ApiResponse {
-  data: Project[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -30,32 +20,58 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
 
-  useEffect(() => {
+  const loadPaginated = () => {
     api.get('/projects', { params: { page, limit: 10 } })
       .then(res => {
-        const response = res.data as ApiResponse;
-        const projectsData: Project[] = response.data || [];
-        const meta = response.meta || { totalPages: 1 };
-        
+        const projectsData = (res.data.data || []) as Project[];
+        const meta = res.data.meta || { totalPages: 1 };
         setProjects(projectsData);
         setFilteredProjects(projectsData);
         setTotalPages(meta.totalPages || 1);
-        
-        const uniqueCategories: string[] = [...new Set(projectsData.map((p: Project) => p.category))];
-        setCategories(uniqueCategories);
+        if (categories.length === 0) {
+          const unique = [...new Set(projectsData.map((p: Project) => p.category))];
+          setCategories(unique);
+        }
+        setLoading(false);
       })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, [page]);
+      .catch(err => console.error(err));
+  };
+
+  const loadAllProjects = () => {
+    api.get('/projects', { params: { limit: 100 } })
+      .then(res => {
+        const all = (res.data.data || []) as Project[];
+        setAllProjects(all);
+        const unique = [...new Set(all.map((p: Project) => p.category))];
+        setCategories(unique);
+        setLoading(false);
+      })
+      .catch(err => console.error(err));
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    if (selectedCategory) {
+      loadAllProjects();
+    } else {
+      loadPaginated();
+    }
+  }, [page, selectedCategory]);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      const filtered = allProjects.filter(p => p.category === selectedCategory);
+      setFilteredProjects(filtered);
+    } else {
+      setFilteredProjects(projects);
+    }
+  }, [selectedCategory, allProjects, projects]);
 
   const handleFilter = (category: string) => {
     setSelectedCategory(category);
-    if (category === '') {
-      setFilteredProjects(projects);
-    } else {
-      setFilteredProjects(projects.filter(p => p.category === category));
-    }
+    setPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -63,6 +79,9 @@ export default function ProjectsPage() {
       setPage(newPage);
     }
   };
+
+  const displayProjects = selectedCategory ? filteredProjects : filteredProjects;
+  const showPagination = !selectedCategory && totalPages > 1;
 
   if (loading) return <div>Loading...</div>;
 
@@ -93,7 +112,7 @@ export default function ProjectsPage() {
       </div>
 
       <div className="grid gap-4">
-        {filteredProjects.map(project => (
+        {displayProjects.map(project => (
           <div key={project.id} className="border p-4 rounded">
             <h2 className="text-xl font-semibold">{project.title}</h2>
             <p>{project.description}</p>
@@ -103,9 +122,9 @@ export default function ProjectsPage() {
         ))}
       </div>
 
-      {filteredProjects.length === 0 && <p>No projects in this category.</p>}
+      {displayProjects.length === 0 && <p>No projects in this category.</p>}
 
-      {totalPages > 1 && (
+      {showPagination && (
         <div className="flex justify-center gap-2 mt-4">
           <button
             onClick={() => handlePageChange(page - 1)}

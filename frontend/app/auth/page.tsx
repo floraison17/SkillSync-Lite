@@ -21,11 +21,17 @@ export default function AuthPage() {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // важно для отправки/получения cookies
+        credentials: 'include',
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Something went wrong');
+
+      // Сохраняем userId в localStorage (только для определения владельца, не токен!)
+      if (data.user?.id) {
+        localStorage.setItem('userId', data.user.id);
+      }
+
       router.push('/projects');
     } catch (err: any) {
       setError(err.message);

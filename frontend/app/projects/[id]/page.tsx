@@ -41,24 +41,30 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this project?')) return;
+    try {
+      await api.delete(`/projects/${id}`);
+      router.push('/projects');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete');
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
   if (!project) return <div>Project not found</div>;
 
-  const token = localStorage.getItem('access_token');
-  let isOwner = false;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      isOwner = project.ownerId === payload.sub;
-    } catch (e) {}
-  }
+  // Получаем userId из localStorage (сохраняется при логине)
+  const userId = localStorage.getItem('userId');
+  const isOwner = userId !== null && project.ownerId === userId;
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">{project.title}</h1>
       <p className="mb-2">{project.description}</p>
       <p className="mb-2">Category: {project.category}</p>
-      {!isOwner && token && (
+
+      {!isOwner && userId && (
         <button
           onClick={handleApply}
           disabled={applying}
@@ -67,14 +73,26 @@ export default function ProjectDetailPage() {
           {applying ? 'Applying...' : 'Apply to join'}
         </button>
       )}
+
       {isOwner && (
         <div className="mt-4 space-x-2">
-          <p className="text-gray-500">You are the owner of this project</p>
-          <Link href={`/applications/project/${project.id}`} className="bg-purple-500 text-white p-2 rounded inline-block">
+          <Link href={`/projects/${project.id}/edit`} className="bg-yellow-500 text-white p-2 rounded">
+            Edit
+          </Link>
+          <button onClick={handleDelete} className="bg-red-500 text-white p-2 rounded">
+            Delete
+          </button>
+          <Link href={`/applications/project/${project.id}`} className="bg-purple-500 text-white p-2 rounded">
             Manage Applications
           </Link>
+          <p className="text-gray-500 mt-2">You are the owner of this project</p>
         </div>
       )}
+
+      {!userId && (
+        <p className="text-gray-500 mt-2">Please log in to apply or manage projects.</p>
+      )}
+
       {message && <p className="mt-2 text-blue-600">{message}</p>}
     </div>
   );
